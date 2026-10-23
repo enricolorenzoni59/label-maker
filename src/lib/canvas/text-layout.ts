@@ -120,18 +120,41 @@ function sharedMeasurementContext(): CanvasRenderingContext2D | null {
  *
  * Konva *truncates* rendered lines once they exceed the node's `height` (and
  * may add an ellipsis), while designer-core — the print / PNG / PDF renderer —
- * lays out every line and only uses `height` to position the block. For a
- * top-aligned box the height plays no part in the layout, so `undefined` (AUTO)
- * lets Konva draw all lines like the print; `middle`/`bottom` still need the
- * height for their alignment.
+ * lays out every line and only uses `height` to position the block. Give Konva
+ * at least the content height so no line is dropped; `autoHeight` keeps AUTO
+ * (Konva then derives the height itself).
  */
-export function konvaTextHeight(
-  object: Pick<TextObject, 'height' | 'autoHeight'> & {
-    verticalAlign?: TextObject['verticalAlign'];
-  },
+export function konvaTextBoxHeight(
+  autoHeight: boolean,
+  objectHeight: number,
+  contentHeight: number,
 ): number | undefined {
-  if (object.autoHeight) return undefined;
-  return (object.verticalAlign ?? 'top') === 'top' ? undefined : object.height;
+  return autoHeight ? undefined : Math.max(objectHeight, contentHeight);
+}
+
+/**
+ * Where designer-core starts the text block inside its box, per
+ * `verticalAlign` (`dist/render/text.js`):
+ * `top → 0`, `middle → (boxHeight − contentHeight) / 2`,
+ * `bottom → boxHeight − contentHeight`.
+ *
+ * The editor bakes this into the node's `y` (Konva is always told
+ * `verticalAlign: 'top'`) so it can enlarge the box without dragging the
+ * alignment along — and so an overflowing block lands where the print puts it.
+ */
+export function textBlockAlignOffsetY(
+  boxHeight: number,
+  contentHeight: number,
+  verticalAlign: TextObject['verticalAlign'] | undefined,
+): number {
+  switch (verticalAlign) {
+    case 'middle':
+      return (boxHeight - contentHeight) / 2;
+    case 'bottom':
+      return boxHeight - contentHeight;
+    default:
+      return 0;
+  }
 }
 
 /**
