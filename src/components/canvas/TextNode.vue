@@ -21,7 +21,12 @@ import { applyTemplate, type TextObject } from '@burnmark-io/designer-core';
 import { useDataStore } from '@/stores/data';
 import { useShiftKey } from '@/composables/useShiftKey';
 import { useTransformContext } from '@/composables/useTransformContext';
-import { textYCorrectionFor, konvaTextHeight } from '@/lib/canvas/text-layout';
+import { konvaTextBoxHeight } from '@/lib/canvas/text-layout';
+import {
+  editorTopOffsetFor,
+  measureTextContentHeight,
+  textFontStyle,
+} from '@/lib/canvas/editor-text';
 
 const data = useDataStore();
 const shiftKey = useShiftKey();
@@ -90,27 +95,40 @@ const renderHeight = computed(() =>
 );
 
 /**
- * WYSIWYG vertical correction (see `@/lib/canvas/text-layout`). Konva anchors
- * the first line by its middle baseline, designer-core (print/export) by its
- * alphabetic baseline; the node is shifted by this so the canvas matches the
- * print. Every node↔object coordinate conversion below undoes it.
+ * WYSIWYG corrections (see `@/lib/canvas/editor-text`). Konva anchors the
+ * first line by its middle baseline and *truncates* lines to the node's
+ * height; designer-core (print/export) anchors by the alphabetic baseline and
+ * lays out every line. The node is shifted and its box sized so the canvas
+ * matches the print; every node↔object conversion below undoes the shift.
  */
-const yCorrection = computed(() => textYCorrectionFor(props.object));
+const renderedText = computed(() => applyTemplate(props.object.content, data.currentVariables));
+
+/** Laid-out height of the rendered text (same engine/wrapping as the node). */
+const contentHeight = computed(() => measureTextContentHeight(props.object, renderedText.value));
+
+const topOffset = computed(() => editorTopOffsetFor(props.object, contentHeight.value));
+
+const konvaHeight = computed(() =>
+  konvaTextBoxHeight(props.object.autoHeight, props.object.height, contentHeight.value),
+);
 
 const config = computed(() => ({
   id: props.object.id,
   name: 'object',
   x: props.object.x + props.object.width / 2,
-  y: props.object.y + yCorrection.value + renderHeight.value / 2,
+  y: props.object.y + topOffset.value + renderHeight.value / 2,
   offsetX: props.object.width / 2,
   offsetY: renderHeight.value / 2,
   width: props.object.width,
-  height: konvaTextHeight(props.object),
-  text: applyTemplate(props.object.content, data.currentVariables),
+  height: konvaHeight.value,
+  text: renderedText.value,
   fontSize: props.object.fontSize,
   fontFamily: props.object.fontFamily,
   fontStyle: textFontStyle(props.object),
   align: props.object.textAlign,
+  // Kept: for a box tall enough Konva already aligns like designer-core, and
+  // `editorTopOffsetFor` only adds the overflow offset (so the node bounds stay
+  // on the stored box wherever possible).
   verticalAlign: props.object.verticalAlign,
   letterSpacing: props.object.letterSpacing,
   lineHeight: props.object.lineHeight,
@@ -135,17 +153,10 @@ watchPostEffect(() => {
   }
 });
 
-function textFontStyle(o: TextObject): string {
-  const parts: string[] = [];
-  if (o.fontStyle === 'italic') parts.push('italic');
-  if (o.fontWeight === 'bold') parts.push('bold');
-  return parts.length === 0 ? 'normal' : parts.join(' ');
-}
-
 function onDragMove(event: { target?: { x?: () => number; y?: () => number } }): void {
   const t = event.target;
   if (!t?.x || !t?.y) return;
-  emit('dragmove', t.x() - props.object.width / 2, t.y() - yCorrection.value - renderHeight.value / 2);
+  emit('dragmove', t.x() - props.object.width / 2, t.y() - topOffset.value - renderHeight.value / 2);
 }
 
 function onDragEnd(event: {
@@ -156,7 +167,7 @@ function onDragEnd(event: {
   // For autoHeight text the stored height may differ from what Konva
   // actually rendered — read the live node height to avoid position drift.
   const renderedHeight = props.object.autoHeight && t.height ? t.height() : props.object.height;
-  emit('dragend', t.x() - props.object.width / 2, t.y() - yCorrection.value - renderedHeight / 2);
+  emit('dragend', t.x() - props.object.width / 2, t.y() - topOffset.value - renderedHeight / 2);
 }
 
 const MIN_DIM = 10;
@@ -229,9 +240,9 @@ function onTransformStart(): void {
 
   dragStartRotationRad = (props.object.rotation * Math.PI) / 180;
   const cx = props.object.x + dragStartWidth / 2;
-  // The node is drawn `yCorrection` below the object box, so its centre — the
+  // The node is drawn `topOffset` below the object box, so its centre — the
   // pivot frame for everything below — carries the same shift.
-  const cy = props.object.y + yCorrection.value + dragStartHeight / 2;
+  const cy = props.object.y + topOffset.value + dragStartHeight / 2;
   const off = localPivotOffset(dragStartAnchor, dragStartWidth, dragStartHeight);
   const cosR = Math.cos(dragStartRotationRad);
   const sinR = Math.sin(dragStartRotationRad);
@@ -379,13 +390,19 @@ function onTransformEnd(): void {
     posY = newCy - newHeight / 2;
   } else {
     posX = node.x() - newWidth / 2;
-    // The WYSIWYG offset depends on the font size (and, in the overflow case,
-    // on the box/content height), which a corner resize changes — recompute it
-    // from the post-transform values instead of the pre-transform ones, or the
-    // stored `y` lands the text a few dots off (and jumps on the next render).
+    // The WYSIWYG offset depends on the font size and, in the overflow case,
+    // on the box/content height — all of which a resize changes. Recompute it
+    // from the post-transform values, or the stored `y` lands the text a few
+    // dots off (and it jumps on the next render).
     const nextFontSize = proportional ? Math.max(MIN_FONT, node.fontSize()) : props.object.fontSize;
-    const nextCorrection = textYCorrectionFor({ ...props.object, fontSize: nextFontSize });
-    posY = node.y() - nextCorrection - newHeight / 2;
+    const nextObject = {
+      ...props.object,
+      fontSize: nextFontSize,
+      width: newWidth,
+      height: newHeight,
+    } as TextObject;
+    const nextContentHeight = measureTextContentHeight(nextObject, renderedText.value);
+    posY = node.y() - editorTopOffsetFor(nextObject, nextContentHeight) - newHeight / 2;
   }
 
   const patch: TransformEndPatch = {

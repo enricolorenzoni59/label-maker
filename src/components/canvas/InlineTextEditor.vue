@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 import type { TextObject } from '@burnmark-io/designer-core';
-import { textYCorrectionFor } from '@/lib/canvas/text-layout';
+import { editorTopOffsetFor, measureTextContentHeight } from '@/lib/canvas/editor-text';
 
 const props = defineProps<{
   object: TextObject;
@@ -37,9 +37,11 @@ const editorRef = ref<HTMLDivElement | null>(null);
 
 const wrapperStyle = computed(() => {
   const left = props.offsetX + props.object.x * props.scale;
-  // Match the Konva text exactly, which is drawn `yCorrection` below the
-  // object box (WYSIWYG with the print — see `@/lib/canvas/text-layout`).
-  const top = props.offsetY + (props.object.y + textYCorrectionFor(props.object)) * props.scale;
+  // Match the Konva text exactly — including the block offset applied when the
+  // content overflows the box (CSS flex handles the non-overflow alignment,
+  // same as Konva's verticalAlign). See `@/lib/canvas/editor-text`.
+  const contentHeight = measureTextContentHeight(props.object, props.object.content);
+  const top = props.offsetY + (props.object.y + editorTopOffsetFor(props.object, contentHeight)) * props.scale;
   const width = props.object.width * props.scale;
   const height = props.object.height * props.scale;
   return {

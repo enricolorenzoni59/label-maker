@@ -1,7 +1,7 @@
 /**
  * WYSIWYG regression: the editor (Konva) and the print/export renderer
  * (`@burnmark-io/designer-core`'s `renderFull`) must place a text object's
- * first line at the same vertical position.
+ * first line at the same vertical position — for every `verticalAlign`.
  *
  * Konva does not render in jsdom, so the editor side is mirrored here (the
  * same convention `marquee.test.ts` / `group-transform.test.ts` use for Konva
@@ -9,11 +9,11 @@
  * implementation designer-core itself uses in Node) so the comparison uses
  * real font metrics. The print side runs the real `renderFull` pipeline.
  *
- * This test is expected to FAIL today: designer-core anchors the first line by
- * its alphabetical baseline at `fontSize` (`textBaseline: 'alphabetic'`),
- * while Konva centres it in the line box (`textBaseline: 'middle'`). The
- * offset grows with `fontSize` — a 350-dot "D" drifts ~30 dots, a 50-dot
- * caption is nearly invisible. See `@/lib/canvas/text-layout`.
+ * Without the corrections in `@/lib/canvas/text-layout` these tests are red:
+ * designer-core anchors the first line by its alphabetic baseline at
+ * `fontSize` (`textBaseline: 'alphabetic'`), while Konva centres it in the
+ * line box (`textBaseline: 'middle'`). The offset grows with `fontSize` — a
+ * 350-dot "D" drifts ~30 dots, a 50-dot caption is nearly invisible.
  */
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
@@ -22,7 +22,8 @@ import { renderFull, type LabelDocument, type RawImageData, type TextObject } fr
 import {
   konvaFirstLineAnchorY,
   editorTextYCorrection,
-  konvaTextHeight,
+  konvaTextBoxHeight,
+  textBlockAlignOffsetY,
   type FontVerticalMetrics,
 } from '@/lib/canvas/text-layout';
 
@@ -116,9 +117,9 @@ function inkTopOfData(data: Uint8ClampedArray | Uint8Array, width: number, heigh
 }
 
 /**
- * Mirror of Konva's `Text._sceneFunc` for a single, top-aligned line: Konva
- * forces `textBaseline: 'middle'` and draws the line at its line-box centre,
- * plus the WYSIWYG correction the app applies to the node.
+ * Mirror of Konva's `Text` rendering for the object's first line: Konva forces
+ * `textBaseline: 'middle'` and draws the line at its line-box centre, shifted
+ * by the block alignment and the baseline correction the app applies.
  */
 function editorInkTop(object: TextObject): number {
   const canvas = createCanvas(W, H);
@@ -127,7 +128,27 @@ function editorInkTop(object: TextObject): number {
   ctx.fillRect(0, 0, W, H);
 
   ctx.font = fontString(object);
-  const anchor = konvaFirstLineAnchorY(object) + editorTextYCorrection(object, verticalMetrics(ctx, object));
+  const contentHeight = object.lineHeight * object.fontSize; // single line
+  const konvaHeight =
+    konvaTextBoxHeight(object.autoHeight, object.height, contentHeight) ?? contentHeight;
+  // The app only bakes designer-core's block offset when the content overflows
+  // the box; otherwise it keeps Konva's own verticalAlign (so the node bounds
+  // stay on the stored box).
+  const overflow = contentHeight > object.height;
+  const blockOffset = overflow
+    ? textBlockAlignOffsetY(object.height, contentHeight, object.verticalAlign)
+    : 0;
+  const alignY =
+    object.verticalAlign === 'middle'
+      ? (konvaHeight - contentHeight) / 2
+      : object.verticalAlign === 'bottom'
+        ? konvaHeight - contentHeight
+        : 0;
+  const anchor =
+    alignY +
+    konvaFirstLineAnchorY(object) +
+    blockOffset +
+    editorTextYCorrection(object, verticalMetrics(ctx, object));
 
   ctx.fillStyle = object.color;
   ctx.textAlign = object.textAlign;
@@ -137,37 +158,46 @@ function editorInkTop(object: TextObject): number {
   return inkTopOfCanvas(canvas);
 }
 
-describe('konvaTextHeight — Konva must not drop lines the print renders', () => {
-  it('omits the height for top-aligned text (Konva would truncate to the box)', () => {
-    expect(konvaTextHeight({ height: 110, autoHeight: false, verticalAlign: 'top' })).toBeUndefined();
-    expect(
-      konvaTextHeight({ height: 110, autoHeight: false, verticalAlign: undefined }),
-    ).toBeUndefined();
+describe('text-layout helpers', () => {
+  it('konvaTextBoxHeight never hands Konva less than the content height', () => {
+    expect(konvaTextBoxHeight(false, 110, 194)).toBe(194);
+    expect(konvaTextBoxHeight(false, 300, 194)).toBe(300);
+    expect(konvaTextBoxHeight(true, 110, 194)).toBeUndefined();
   });
 
-  it('keeps the height where alignment needs it, and for autoHeight', () => {
-    expect(konvaTextHeight({ height: 110, autoHeight: false, verticalAlign: 'middle' })).toBe(110);
-    expect(konvaTextHeight({ height: 110, autoHeight: false, verticalAlign: 'bottom' })).toBe(110);
-    expect(konvaTextHeight({ height: 110, autoHeight: true, verticalAlign: 'middle' })).toBeUndefined();
+  it('textBlockAlignOffsetY mirrors designer-core verticalAlign', () => {
+    expect(textBlockAlignOffsetY(200, 100, 'top')).toBe(0);
+    expect(textBlockAlignOffsetY(200, 100, undefined)).toBe(0);
+    expect(textBlockAlignOffsetY(200, 100, 'middle')).toBe(50);
+    expect(textBlockAlignOffsetY(200, 100, 'bottom')).toBe(100);
   });
 });
 
 describe('WYSIWYG — editor (Konva) vs print (designer-core) first text line', () => {
   for (const fontSize of [50, 120, 350]) {
     it(`places the first line at the same y (fontSize=${fontSize})`, async () => {
-      const object = textObject({ fontSize, lineHeight: 1.1 });
+      const object = textObject({ fontSize, lineHeight: 1.1, verticalAlign: 'top' });
+      await expectFirstLineMatch(object);
+    });
+  }
 
-      const printed: RawImageData = await renderFull(document(object), {});
-      const printTop = inkTopOfData(printed.data, printed.width, printed.height);
-
-      const editorTop = editorInkTop(object);
-
-      expect(printTop, 'print has ink').toBeGreaterThanOrEqual(0);
-      expect(editorTop, 'editor has ink').toBeGreaterThanOrEqual(0);
-      expect(
-        Math.abs(printTop - editorTop),
-        `first-line ink top differs: print=${printTop}, editor=${editorTop}`,
-      ).toBeLessThanOrEqual(2);
+  for (const verticalAlign of ['middle', 'bottom'] as const) {
+    it(`places the first line at the same y (verticalAlign=${verticalAlign})`, async () => {
+      const object = textObject({ verticalAlign });
+      await expectFirstLineMatch(object);
     });
   }
 });
+
+async function expectFirstLineMatch(object: TextObject): Promise<void> {
+  const printed: RawImageData = await renderFull(document(object), {});
+  const printTop = inkTopOfData(printed.data, printed.width, printed.height);
+  const editorTop = editorInkTop(object);
+
+  expect(printTop, 'print has ink').toBeGreaterThanOrEqual(0);
+  expect(editorTop, 'editor has ink').toBeGreaterThanOrEqual(0);
+  expect(
+    Math.abs(printTop - editorTop),
+    `first-line ink top differs: print=${printTop}, editor=${editorTop}`,
+  ).toBeLessThanOrEqual(2);
+}
