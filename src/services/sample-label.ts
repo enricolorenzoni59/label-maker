@@ -68,7 +68,10 @@ export function loadFirstVisitDocument(designer: DesignerStore): void {
   designer.addObject<TextObject>({
     type: 'text',
     x: 60,
-    y: 200,
+    // Sits below the greeting's second line ("Hello {{name}}" wraps to two
+    // lines at 88px in a 480-dot box ≈ 274 dots tall). The editor now renders
+    // every line like the print/export does, so this must not collide with it.
+    y: 290,
     width: 380,
     height: 50,
     rotation: 0,
