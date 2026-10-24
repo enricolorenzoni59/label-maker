@@ -87,8 +87,10 @@ function onTransformStart(): void {
   // Capture group-relative context so per-object transformend handlers
   // can compute positions relative to the group centre rather than each
   // object's own centre — see §5 of amendment-multi-select-fixes.md.
+  // A single selection keeps the context null: the group centre would pin
+  // the object's centre, discarding the resize pivot the node tracked.
   const objs = props.selectedObjects;
-  if (objs.length === 0) {
+  if (objs.length < 2) {
     groupContext.value = null;
     return;
   }
