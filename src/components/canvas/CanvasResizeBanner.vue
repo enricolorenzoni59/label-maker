@@ -48,9 +48,14 @@ function onUse(): void {
 </script>
 
 <style scoped>
+/* Floats over the canvas area, above MainToolbar (z-index 5), so the
+   notice is never hidden behind the toolbar. */
 .banner {
-  position: relative;
-  z-index: 4;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
   display: flex;
   align-items: center;
   gap: var(--space-3);

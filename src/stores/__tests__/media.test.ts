@@ -260,6 +260,48 @@ describe('media store — auto-resize-on-printer-connect', () => {
     expect(banner.payload?.media.widthMm).toBe(89);
   });
 
+  it('touched canvas already at the detected die-cut size shows no banner', async () => {
+    const media = useMediaStore();
+    const designer = useDesignerStore();
+    const printer = usePrinterStore();
+    const banner = useResizeBannerStore();
+
+    // 30 mm → 354 dots at 300 dpi → reads back as 29.97 mm.
+    media.pickCustom(15, 30);
+    expect(media.heightMm).not.toBe(30);
+    designer.addObject({
+      type: 'text',
+      content: 'hi',
+      x: 0,
+      y: 0,
+      width: 50,
+      height: 20,
+      rotation: 0,
+      opacity: 1,
+      locked: false,
+      visible: true,
+      color: '#000',
+      fontFamily: 'Inter',
+      fontSize: 12,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      verticalAlign: 'top',
+      letterSpacing: 0,
+      lineHeight: 1.2,
+      invert: false,
+      wrap: true,
+      autoHeight: false,
+    } as never);
+    expect(designer.canUndo).toBe(true);
+
+    printer.setDetectedMedia(makeMedia({ widthMm: 15, heightMm: 30, type: 'die-cut' }));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(banner.mode).toBe('idle');
+  });
+
   it('empty canvas with canUndo=true (user nuked everything) still adopts silently', async () => {
     const media = useMediaStore();
     const designer = useDesignerStore();

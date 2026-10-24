@@ -376,11 +376,14 @@ export const useMediaStore = defineStore('media', () => {
     detected => {
       if (!detected) return;
       // Avoid no-op churn when detection just confirms the current size.
-      if (
-        Math.abs(detected.widthMm - widthMm.value) < 0.5 &&
-        ((detected.heightMm ?? null) === heightMm.value ||
-          (detected.heightMm === undefined && heightMm.value === null))
-      ) {
+      // Both axes need a tolerance: mm → dots → mm rounds (30 mm at
+      // 300 dpi reads back as 29.97 mm).
+      const detectedHeight = detected.heightMm ?? null;
+      const sameHeight =
+        detectedHeight === null || heightMm.value === null
+          ? detectedHeight === heightMm.value
+          : Math.abs(detectedHeight - heightMm.value) < 0.5;
+      if (Math.abs(detected.widthMm - widthMm.value) < 0.5 && sameHeight) {
         return;
       }
       const touched = designer.canUndo && designer.document.objects.length > 0;
