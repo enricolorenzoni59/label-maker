@@ -231,7 +231,10 @@ function onTransformStart(): void {
   const node = nodeRef.value?.getNode();
   if (!node) return;
   dragStartWidth = props.object.width;
-  dragStartHeight = props.object.autoHeight ? measuredHeight.value : props.object.height;
+  // The drawn box, not the stored one: when the content overflows the
+  // stored height the node is sized to the content (`konvaTextBoxHeight`),
+  // and that is the frame the Transformer shows and the user drags.
+  dragStartHeight = node.height();
   dragStartFontSize = props.object.fontSize;
   dragStartLetterSpacing = props.object.letterSpacing;
   dragStartAnchor = activeAnchor.value;
@@ -338,15 +341,21 @@ function onTransform(): void {
   }
 
   node.width(newWidth);
-  if (!props.object.autoHeight) {
-    node.height(newHeight);
-  }
   // Always set fontSize so toggling Shift mid-drag snaps the live font
   // back to dragStart in non-proportional mode (and re-engages scaling
   // cleanly when toggled back). dragStart is the no-op value.
   node.fontSize(newFont);
+  if (!props.object.autoHeight) {
+    // Never below the content: Konva truncates lines past the node's
+    // height, which would hide them mid-drag.
+    const nextContentHeight = measureTextContentHeight(
+      { ...props.object, fontSize: newFont, width: newWidth } as TextObject,
+      renderedText.value,
+    );
+    node.height(konvaTextBoxHeight(false, newHeight, nextContentHeight) ?? newHeight);
+  }
 
-  const liveHeight = props.object.autoHeight ? node.height() : newHeight;
+  const liveHeight = node.height();
 
   // Always anchor the bbox at the pivot computed at transformstart.
   // This is robust regardless of how Konva positions the node — at the
