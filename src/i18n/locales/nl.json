@@ -48,6 +48,8 @@
     "connectUsb": "Verbinden via USB",
     "connectSerial": "Verbinden via Bluetooth",
     "connectSerialHint": "Voor OS-gekoppelde Bluetooth SPP printers (bijv. QL-820NWB)",
+    "connectBluetoothLe": "Niimbot verbinden (Bluetooth)",
+    "connectBluetoothLeHint": "Voor Bluetooth LE-labelprinters zoals de Niimbot D110 — koppelen via het besturingssysteem is niet nodig",
     "unsupportedBrowser": {
       "title": "Een printer verbinden werkt in Chrome, Edge of Opera.",
       "body": "Ontwerpen kan hier prima — printen heeft een andere browser nodig.",

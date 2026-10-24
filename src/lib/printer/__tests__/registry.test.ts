@@ -37,6 +37,14 @@ describe('printer registry', () => {
     expect(getMediaForFamily('brother-ql').length).toBeGreaterThan(0);
     expect(getMediaForFamily('labelwriter').length).toBeGreaterThan(0);
     expect(getMediaForFamily('labelmanager').length).toBeGreaterThan(0);
+    expect(getMediaForFamily('niimbot').length).toBeGreaterThan(0);
+  });
+
+  it('lists the Niimbot D110 as drivable over Web Bluetooth only', () => {
+    const d110 = findSupported('niimbot', 'D110');
+    expect(d110?.drivableTransports).toEqual(['bluetooth-gatt']);
+    expect(d110?.allEnginesDrivable).toBe(true);
+    expect(getAllUsbFilters().length).toBeGreaterThan(0);
   });
 
   it('exposes resolveSupportedDevices output per family', () => {

@@ -107,6 +107,13 @@ export const COMMON_SIZES: readonly CommonSize[] = [
     name: '19mm tape (LabelManager / P-touch)',
     family: 'labelmanager',
   },
+  {
+    id: 'niimbot-12x40',
+    widthMm: 12,
+    heightMm: 40,
+    name: '12 × 40 mm (Niimbot D110)',
+    family: 'niimbot',
+  },
 ];
 
 export function findCommonSize(id: string): CommonSize | undefined {

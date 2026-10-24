@@ -105,13 +105,16 @@ const LEGACY_LAST_CONNECTED_KEY = 'burnmark.lastConnected';
  */
 const LAST_CONNECTIONS_KEY = 'burnmark.last-connections';
 
+/** How a connection was paired — `bluetooth-gatt` is Web Bluetooth (Niimbot). */
+export type TransportKind = 'usb' | 'serial' | 'bluetooth-gatt';
+
 export interface LastConnectionRecord {
   family: PrinterFamily;
   model: string;
   /** §2.6 fingerprint — disambiguates two-of-the-same-model. */
   fingerprint: string;
   /** Which transport pairing was used. Drives reconnect path. */
-  transportKind: 'usb' | 'serial';
+  transportKind: TransportKind;
   /** Optional transport-specific address; surface for diagnostics. */
   address?: string;
   /** Optional user-assigned name; load-bearing when fingerprint isn't stable. */
@@ -383,7 +386,7 @@ export const usePrinterStore = defineStore('printer', () => {
     opts?: {
       fingerprintHint?: string;
       nickname?: string;
-      transportKind?: 'usb' | 'serial';
+      transportKind?: TransportKind;
       address?: string;
     },
   ): ConnectionId {
@@ -602,13 +605,13 @@ export const usePrinterStore = defineStore('printer', () => {
    * Multi-connection callers should use `addConnection` / `removeConnection`
    * directly.
    */
-  function setAdapter(next: PrinterAdapter | null): void {
+  function setAdapter(next: PrinterAdapter | null, opts?: { transportKind?: TransportKind }): void {
     if (next) {
       // BC semantics: replace the active connection, don't accumulate.
       // Multi-connection callers use addConnection() directly.
       const current = activeConnection();
       if (current) removeConnection(current.id);
-      addConnection(next);
+      addConnection(next, opts);
     } else {
       const conn = activeConnection();
       if (conn) removeConnection(conn.id);

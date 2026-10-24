@@ -20,6 +20,9 @@ importers:
       '@mbtech-nl/bitmap':
         specifier: ^1.3.0
         version: 1.3.0
+      '@mmote/niimbluelib':
+        specifier: 0.47.1
+        version: 0.47.1
       '@thermal-label/brother-ql-core':
         specifier: ^0.6.3
         version: 0.6.3
@@ -680,6 +683,14 @@ packages:
     resolution: {integrity: sha512-WgIcfpsTjUkChLM0T+XQSJJF04NiFeE2UxEgRnuld7zRcBe70qLpN9/Zx3q0KhrcknlAo7lh/LvvHnTe87UKUQ==}
     engines: {node: '>=24.0.0'}
 
+  '@capacitor-community/bluetooth-le@8.3.0':
+    resolution: {integrity: sha512-bjI+m8mZ2AB9xIgwPu9T40QoAC7NErYt6q13zMHBzW3hIAITqQKFiElKOUsX813ItXzb81GoRqjlbSeHlKEzQg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor/core@8.5.3':
+    resolution: {integrity: sha512-oBE1oGuYE4ZzYYrulC75OuHdSsD6zLUy7d5o1tFwDLG4govGoubY15cxpiI5l0+q87Lm5p0bhbehMdzJg4aFag==}
+
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
     engines: {node: '>=18'}
@@ -968,6 +979,9 @@ packages:
     engines: {node: '>=20.9.0'}
     peerDependencies:
       prettier: '>=3.0.0'
+
+  '@mmote/niimbluelib@0.47.1':
+    resolution: {integrity: sha512-fimKNas6YyTPh5GIVbPJ090+8ieszTBLdBIX8xwzsYqjrfdxCOEmE914gBc0knqqoA2EgBU0K34BLrheTu6GrQ==}
 
   '@napi-rs/canvas-android-arm64@0.1.100':
     resolution: {integrity: sha512-hjhCKhntPv9+t4ckHymdx0phYNcVW+GKQR6Lzw2zE+pOVjOplSmtx9nNNknTjbEDLcuLZqA1y8ufKg1XfgftzQ==}
@@ -1653,6 +1667,9 @@ packages:
     resolution: {integrity: sha512-hsU18Ae8CDTR6Kgu9DYf0EbCr/a5iGL0rytQDobUcdpYOKokk8LEjVphnXkDkgpi0wYVsqrXuP0bZxJaTqdgoA==}
     engines: {node: '>= 0.4'}
 
+  async-mutex@0.5.0:
+    resolution: {integrity: sha512-1A94B18jkJ3DYq284ohPxoXbfTA5HsQ7/Mf4DEhcyLx3Bz27Rh59iScbB6EPiP+B+joue6YCxcMXSbFC1tZKwA==}
+
   async@3.2.6:
     resolution: {integrity: sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==}
 
@@ -2088,6 +2105,9 @@ packages:
   esutils@2.0.3:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
+
+  eventemitter3@5.0.4:
+    resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
 
   expect-type@1.3.0:
     resolution: {integrity: sha512-knvyeauYhqjOYvQ66MznSMs83wmHrCycNEN6Ao+2AeYEfxUIkuiVxdEa1qlGEPK+We3n0THiDciYSsCcgW/DoA==}
@@ -4291,6 +4311,15 @@ snapshots:
 
   '@burnmark-io/sheet-templates@0.1.1': {}
 
+  '@capacitor-community/bluetooth-le@8.3.0(@capacitor/core@8.5.3)':
+    dependencies:
+      '@capacitor/core': 8.5.3
+      '@types/web-bluetooth': 0.0.20
+
+  '@capacitor/core@8.5.3':
+    dependencies:
+      tslib: 2.8.1
+
   '@csstools/color-helpers@5.1.0': {}
 
   '@csstools/css-calc@2.1.4(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
@@ -4523,6 +4552,14 @@ snapshots:
   '@mbtech-nl/prettier-config@1.1.0(prettier@3.8.3)':
     dependencies:
       prettier: 3.8.3
+
+  '@mmote/niimbluelib@0.47.1':
+    dependencies:
+      '@capacitor-community/bluetooth-le': 8.3.0(@capacitor/core@8.5.3)
+      '@capacitor/core': 8.5.3
+      async-mutex: 0.5.0
+      crc-32: 1.2.2
+      eventemitter3: 5.0.4
 
   '@napi-rs/canvas-android-arm64@0.1.100':
     optional: true
@@ -5179,6 +5216,10 @@ snapshots:
 
   async-function@1.0.0: {}
 
+  async-mutex@0.5.0:
+    dependencies:
+      tslib: 2.8.1
+
   async@3.2.6: {}
 
   asynckit@0.4.0: {}
@@ -5720,6 +5761,8 @@ snapshots:
       '@types/estree': 1.0.8
 
   esutils@2.0.3: {}
+
+  eventemitter3@5.0.4: {}
 
   expect-type@1.3.0: {}
 
@@ -6884,8 +6927,7 @@ snapshots:
     dependencies:
       typescript: 5.5.4
 
-  tslib@2.8.1:
-    optional: true
+  tslib@2.8.1: {}
 
   type-check@0.4.0:
     dependencies:

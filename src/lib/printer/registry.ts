@@ -19,6 +19,12 @@ import {
   PROTOCOLS as LABELMANAGER_PROTOCOLS,
   findDevice as findLabelmanager,
 } from '@thermal-label/labelmanager-core';
+import {
+  DEVICE_REGISTRY as NIIMBOT_REGISTRY,
+  DEVICES as NIIMBOT_DEVICES,
+  MEDIA as NIIMBOT_MEDIA,
+  PROTOCOLS as NIIMBOT_PROTOCOLS,
+} from './niimbot/devices';
 import { buildUsbFilters } from '@thermal-label/transport';
 import {
   resolveSupportedDevices,
@@ -28,7 +34,7 @@ import {
   type TransportType,
 } from '@thermal-label/contracts';
 
-export type PrinterFamily = 'brother-ql' | 'labelwriter' | 'labelmanager';
+export type PrinterFamily = 'brother-ql' | 'labelwriter' | 'labelmanager' | 'niimbot';
 
 export interface RegistryEntry {
   family: PrinterFamily;
@@ -43,10 +49,10 @@ export interface SupportedEntry {
 /**
  * Transports this runtime can drive in the browser. `usb` covers Web
  * USB; `serial` covers Web Serial including Bluetooth-SPP devices the
- * OS pre-pairs into the serial picker. Expand when we add Web TCP or
- * Web Bluetooth GATT.
+ * OS pre-pairs into the serial picker; `bluetooth-gatt` covers Web
+ * Bluetooth (Niimbot). Expand when we add Web TCP.
  */
-const RUNTIME_TRANSPORTS: ReadonlySet<TransportType> = new Set(['usb', 'serial']);
+const RUNTIME_TRANSPORTS: ReadonlySet<TransportType> = new Set(['usb', 'serial', 'bluetooth-gatt']);
 
 /**
  * Per-family supported-device tables. Each entry is a `SupportedDevice`
@@ -69,6 +75,11 @@ export const SUPPORTED_LABELMANAGER: readonly SupportedDevice[] = resolveSupport
   LABELMANAGER_PROTOCOLS,
   RUNTIME_TRANSPORTS,
 );
+export const SUPPORTED_NIIMBOT: readonly SupportedDevice[] = resolveSupportedDevices(
+  NIIMBOT_REGISTRY,
+  NIIMBOT_PROTOCOLS,
+  RUNTIME_TRANSPORTS,
+);
 
 const ALL: RegistryEntry[] = [
   ...Object.values(BROTHER_DEVICES).map(d => ({ family: 'brother-ql' as const, device: d })),
@@ -77,6 +88,7 @@ const ALL: RegistryEntry[] = [
     family: 'labelmanager' as const,
     device: d,
   })),
+  ...Object.values(NIIMBOT_DEVICES).map(d => ({ family: 'niimbot' as const, device: d })),
 ];
 
 const ALL_DEVICES: DeviceEntry[] = ALL.map(entry => entry.device);
@@ -105,6 +117,8 @@ function supportedTableFor(family: PrinterFamily): readonly SupportedDevice[] {
       return SUPPORTED_LABELWRITER;
     case 'labelmanager':
       return SUPPORTED_LABELMANAGER;
+    case 'niimbot':
+      return SUPPORTED_NIIMBOT;
   }
 }
 
@@ -141,6 +155,8 @@ export function getMediaForFamily(family: PrinterFamily): MediaDescriptor[] {
       return Object.values(LABELWRITER_MEDIA);
     case 'labelmanager':
       return Object.values(LABELMANAGER_MEDIA);
+    case 'niimbot':
+      return Object.values(NIIMBOT_MEDIA);
   }
 }
 

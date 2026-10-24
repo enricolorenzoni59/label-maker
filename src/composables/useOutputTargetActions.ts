@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import type { PrinterAdapter } from '@thermal-label/contracts';
 
-import { usePrinterStore, type Connection } from '@/stores/printer';
+import { usePrinterStore, type Connection, type TransportKind } from '@/stores/printer';
 import { requestUsbPrinter } from '@/lib/printer/connect';
 import { openBrotherQLViaSerial } from '@/lib/printer/drivers';
 import { identifyByVidPid } from '@/lib/printer/registry';
@@ -22,15 +22,19 @@ export function useOutputTargetActions() {
     connectError.value = null;
   }
 
-  async function runConnect(open: () => Promise<PrinterAdapter>, additive: boolean): Promise<void> {
+  async function runConnect(
+    open: () => Promise<PrinterAdapter>,
+    additive: boolean,
+    transportKind?: TransportKind,
+  ): Promise<void> {
     connectError.value = null;
     if (!additive) printer.setConnecting();
     try {
       const adapter = await open();
       if (additive) {
-        printer.addConnection(adapter);
+        printer.addConnection(adapter, { transportKind });
       } else {
-        printer.setAdapter(adapter);
+        printer.setAdapter(adapter, { transportKind });
       }
       await printer.refreshStatus();
     } catch (err) {
@@ -50,7 +54,13 @@ export function useOutputTargetActions() {
   }
 
   async function connectSerial(additive = false): Promise<void> {
-    await runConnect(openBrotherQLViaSerial, additive);
+    await runConnect(openBrotherQLViaSerial, additive, 'serial');
+  }
+
+  async function connectBluetooth(additive = false): Promise<void> {
+    // Lazy: niimbluelib stays out of the main bundle until someone pairs a Niimbot.
+    const { requestNiimbotBluetooth } = await import('@/lib/printer/niimbot/printer');
+    await runConnect(requestNiimbotBluetooth, additive, 'bluetooth-gatt');
   }
 
   async function removeConnection(id: string): Promise<void> {
@@ -106,6 +116,7 @@ export function useOutputTargetActions() {
     runConnect,
     connectUsb,
     connectSerial,
+    connectBluetooth,
     removeConnection,
   };
 }

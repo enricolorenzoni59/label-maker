@@ -80,6 +80,16 @@
           :scale="viewport.zoom.value"
         />
 
+        <UnprintableBands
+          v-if="unprintable"
+          :width="viewport.labelWidthDots.value"
+          :height="viewport.labelHeightDots.value"
+          :scale="viewport.zoom.value"
+          :axis="unprintable.axis"
+          :before="unprintable.before"
+          :after="unprintable.after"
+        />
+
         <VRect v-if="marquee.active" :config="marqueeRectConfig" />
       </VLayer>
 
@@ -157,11 +167,13 @@ import CanvasObject, { type TransformEndPatch } from './CanvasObject.vue';
 import AlignmentGuides from './AlignmentGuides.vue';
 import SelectionTransformer from './SelectionTransformer.vue';
 import InlineTextEditor from './InlineTextEditor.vue';
+import UnprintableBands from './UnprintableBands.vue';
 
 import { findSheet } from '@burnmark-io/sheet-templates';
 
 import { useDesignerStore } from '@/stores/designer';
 import { useMediaStore, dotsFromMm } from '@/stores/media';
+import { usePrinterStore } from '@/stores/printer';
 import { usePreferencesStore } from '@/stores/preferences';
 import { CANVAS_VIEWPORT_KEY, type ViewportState } from '@/composables/useCanvasViewport';
 import { computeSnap } from '@/composables/useSnapping';
@@ -170,6 +182,7 @@ import type { KonvaStage } from './konva-types';
 const { t } = useI18n();
 const designer = useDesignerStore();
 const media = useMediaStore();
+const printer = usePrinterStore();
 const prefs = usePreferencesStore();
 
 /**
@@ -178,10 +191,42 @@ const prefs = usePreferencesStore();
  * fallback when the media descriptor doesn't expose the field.
  */
 const cornerRadiusDots = computed<number | undefined>(() => {
-  if (media.source !== 'sheet' || !media.sheetCode) return undefined;
-  const sheet = findSheet(media.sheetCode);
-  if (!sheet?.cornerRadiusMm) return undefined;
-  return dotsFromMm(sheet.cornerRadiusMm, designer.document.canvas.dpi || 300);
+  const dpi = designer.document.canvas.dpi || 300;
+  if (media.source === 'sheet' && media.sheetCode) {
+    const sheet = findSheet(media.sheetCode);
+    return sheet?.cornerRadiusMm ? dotsFromMm(sheet.cornerRadiusMm, dpi) : undefined;
+  }
+  const radius = canvasPrinterMedia.value?.cornerRadiusMm;
+  return radius ? dotsFromMm(radius, dpi) : undefined;
+});
+
+/**
+ * The connected printer's media, but only while the canvas is sized to
+ * it — its corner radius and print margins describe *that* label, not
+ * whatever custom size the user switched to afterwards.
+ */
+const canvasPrinterMedia = computed(() => {
+  const m = printer.effectiveMedia;
+  if (!m || m.heightMm === undefined || media.heightMm === null) return null;
+  const sameSize =
+    Math.abs(m.widthMm - media.widthMm) < 0.5 && Math.abs(m.heightMm - media.heightMm) < 0.5;
+  return sameSize ? m : null;
+});
+
+/**
+ * Strips across the head the printer can't reach (media `printMargins`
+ * left/right run across the head, i.e. along the canonical width).
+ * Horizontal display swaps that axis onto the screen's y.
+ */
+const unprintable = computed(() => {
+  const margins = canvasPrinterMedia.value?.printMargins;
+  if (!margins || (margins.leftMm <= 0 && margins.rightMm <= 0)) return null;
+  const dpi = designer.document.canvas.dpi || 300;
+  return {
+    axis: media.orientation === 'horizontal' ? ('y' as const) : ('x' as const),
+    before: dotsFromMm(margins.leftMm, dpi),
+    after: dotsFromMm(margins.rightMm, dpi),
+  };
 });
 
 const { document } = storeToRefs(designer);

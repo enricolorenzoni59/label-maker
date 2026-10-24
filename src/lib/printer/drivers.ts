@@ -35,6 +35,10 @@ export async function openFromUSBDeviceForFamily(
       return labelwriterFromUSB(usbDevice);
     case 'labelmanager':
       return labelmanagerFromUSB(usbDevice);
+    case 'niimbot':
+      // No Niimbot device declares a `usb` transport, so identifyByVidPid
+      // never routes here; the D110's USB-C port is charge-only.
+      throw new Error('Niimbot printers connect over Bluetooth, not USB');
   }
 }
 

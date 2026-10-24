@@ -49,6 +49,7 @@ const DEFAULT_REPORT_URLS: Record<PrinterFamily, string> = {
   'brother-ql': 'https://github.com/thermal-label/brother-ql/issues/new',
   labelwriter: 'https://github.com/thermal-label/labelwriter/issues/new',
   labelmanager: 'https://github.com/thermal-label/labelmanager/issues/new',
+  niimbot: 'https://github.com/enricolorenzoni59/label-maker/issues/new',
 };
 
 function envKeyFor(family: PrinterFamily): string {
@@ -89,6 +90,7 @@ const FAMILY_PACKAGE_NAME: Record<PrinterFamily, string> = {
   'brother-ql': '@thermal-label/brother-ql-web',
   labelwriter: '@thermal-label/labelwriter-web',
   labelmanager: '@thermal-label/labelmanager-web',
+  niimbot: '@mmote/niimbluelib',
 };
 
 const FAMILY_HINT: Record<PrinterFamily, string> = {
@@ -98,6 +100,8 @@ const FAMILY_HINT: Record<PrinterFamily, string> = {
     'LabelWriter: if the chassis label has a serial-string LED suffix (e.g. "B-XX"), include it in the notes.',
   labelmanager:
     'LabelManager: please mention whether the cartridge was a genuine Dymo cartridge or a third-party / refilled one.',
+  niimbot:
+    'Niimbot: include the firmware / hardware versions shown in the Niimbot app, and whether the roll is a genuine (RFID-tagged) one.',
 };
 
 /**

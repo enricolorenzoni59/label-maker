@@ -144,6 +144,18 @@
           >
             {{ t('printer.connectSerial') }}
           </button>
+          <button
+            v-if="webBluetooth"
+            class="output-menu__btn"
+            :class="{
+              'output-menu__btn--primary': thermalEntries.length === 0 && !webUsb && !webSerial,
+            }"
+            type="button"
+            :title="t('printer.connectBluetoothLeHint')"
+            @click="onConnectBluetooth"
+          >
+            {{ t('printer.connectBluetoothLe') }}
+          </button>
           <p v-if="connectError" class="output-menu__error">{{ connectError }}</p>
         </div>
       </div>
@@ -187,7 +199,7 @@ const media = useMediaStore();
 const printer = usePrinterStore();
 const printConfig = usePrintConfigStore();
 const { show } = useToast();
-const { webUsb, webSerial, hasAnyTransport, browser } = useBrowserCapabilities();
+const { webUsb, webSerial, webBluetooth, hasAnyTransport, browser } = useBrowserCapabilities();
 const {
   connectError,
   runConnect,
@@ -551,7 +563,14 @@ async function onConnectUsb(): Promise<void> {
 async function onConnectSerial(): Promise<void> {
   const additive = thermalEntries.value.length > 0;
   const { openBrotherQLViaSerial } = await import('@/lib/printer/drivers');
-  await runConnect(openBrotherQLViaSerial, additive);
+  await runConnect(openBrotherQLViaSerial, additive, 'serial');
+  if (!additive) close();
+}
+
+async function onConnectBluetooth(): Promise<void> {
+  const additive = thermalEntries.value.length > 0;
+  const { requestNiimbotBluetooth } = await import('@/lib/printer/niimbot/printer');
+  await runConnect(requestNiimbotBluetooth, additive, 'bluetooth-gatt');
   if (!additive) close();
 }
 
