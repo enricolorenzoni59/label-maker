@@ -519,6 +519,21 @@ function isOnSelectedObject(event: {
   return designer.selection.includes(id);
 }
 
+/**
+ * True when the pointer-down target is part of the selection Transformer
+ * (a resize/rotate anchor or its border) — the Transformer owns that
+ * gesture, so it must not also start a marquee.
+ */
+function isOnTransformer(event: { target?: object }): boolean {
+  type KonvaAncestor = { getClassName?: () => string; getParent?: () => unknown };
+  let node = (event.target ?? null) as KonvaAncestor | null;
+  while (node) {
+    if (node.getClassName?.() === 'Transformer') return true;
+    node = (node.getParent?.() as typeof node) ?? null;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Marquee move/up use native window listeners instead of Konva events.
 // Konva suppresses pointermove while isDragging()/isTransforming() is true
@@ -612,6 +627,7 @@ function onStagePointerDown(event: {
   // objects start a marquee — the object becomes draggable only after it's
   // selected, so Konva won't initiate a drag on this gesture.
   if (isOnSelectedObject(event)) return;
+  if (isOnTransformer(event)) return;
   if (editingTextId.value) return;
   if (event.evt?.button !== undefined && event.evt.button !== 0) return;
 
